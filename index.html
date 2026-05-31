@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>WalkLoop</title>
+<!-- PWA -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="WalkLoop">
+<meta name="theme-color" content="#0d1117">
+<link rel="manifest" href="manifest.json">
+<!-- アイコン -->
+<link rel="apple-touch-icon" href="icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0d1117;--surface:#161b22;--surface2:#1c2330;--accent:#39d353;--accent2:#58a6ff;--accent3:#f78166;--text:#e6edf3;--muted:#7d8590;--border:#30363d;--r:16px}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Zen Kaku Gothic New',sans-serif;background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
+.hdr{position:sticky;top:0;z-index:100;background:rgba(13,17,23,0.95);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:12px 18px 10px;display:flex;align-items:center;justify-content:space-between}
+.hdr h1{font-family:'Space Mono',monospace;font-size:20px;font-weight:700;letter-spacing:-1px;color:var(--accent)}
+.hdr h1 span{color:var(--muted)}
+.hdr-right{display:flex;gap:8px;align-items:center}
+.icon-btn{width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;flex-shrink:0}
+#mapWrap{position:relative;width:100%;height:50dvh;background:var(--surface);overflow:hidden}
+#mapEl{display:block}
+.map-ctrl{position:absolute;top:10px;right:10px;display:flex;flex-direction:column;gap:7px;z-index:10}
+.mc{width:34px;height:34px;background:rgba(22,27,34,0.92);border:1px solid var(--border);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;cursor:pointer;backdrop-filter:blur(6px)}
+.mc:active{background:var(--surface2)}
+.map-pill{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:rgba(13,17,23,0.9);border:1px solid var(--accent);border-radius:20px;padding:5px 14px;font-family:'Space Mono',monospace;font-size:12px;color:var(--accent);backdrop-filter:blur(8px);z-index:10;display:none;white-space:nowrap}
+.map-attr{position:absolute;bottom:3px;right:6px;font-size:9px;color:rgba(255,255,255,0.35);z-index:10}
+.panel{padding:16px 18px 60px;display:flex;flex-direction:column;gap:14px}
+.slabel{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:5px}
+.loc-group{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.loc-row{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;transition:background .15s;position:relative}
+.loc-row:not(:last-child)::after{content:'';position:absolute;bottom:0;left:40px;right:0;height:1px;background:var(--border)}
+.loc-row:active{background:var(--surface2)}
+.li{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.li.s{background:rgba(57,211,83,.15)}.li.e{background:rgba(247,129,102,.15)}
+.lt{flex:1;min-width:0}
+.ll{font-size:10px;color:var(--muted)}
+.ln{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.la{color:var(--muted);font-size:11px;flex-shrink:0}
+.cur-btn{display:flex;align-items:center;gap:7px;padding:9px 14px;background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.25);border-radius:11px;cursor:pointer;font-size:13px;color:var(--accent2);margin-top:9px}
+.cur-btn:active{background:rgba(88,166,255,.16)}
+.dist-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px}
+.chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+.chip{padding:7px 13px;border-radius:9px;border:1px solid var(--border);background:var(--surface2);font-family:'Space Mono',monospace;font-size:12px;color:var(--muted);cursor:pointer;transition:all .15s;user-select:none}
+.chip.on{background:rgba(57,211,83,.15);border-color:var(--accent);color:var(--accent)}
+.chip:active{transform:scale(.96)}
+.cust{display:flex;align-items:center;gap:9px;margin-top:10px}
+.cust input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-family:'Space Mono',monospace;font-size:14px;color:var(--text);outline:none;-webkit-appearance:none;transition:border-color .2s}
+.cust input:focus{border-color:var(--accent)}
+.cust .u{font-size:12px;color:var(--muted)}
+.style-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px}
+.schips{display:flex;gap:7px;margin-top:8px;flex-wrap:wrap}
+.sc{padding:7px 11px;border-radius:9px;border:1px solid var(--border);background:var(--surface2);font-size:12px;color:var(--muted);cursor:pointer;transition:all .15s}
+.sc.on{background:rgba(88,166,255,.12);border-color:var(--accent2);color:var(--accent2)}
+.sc:active{transform:scale(.96)}
+.brow{display:flex;gap:9px}
+.gbtn{flex:1;padding:16px;background:var(--accent);border:none;border-radius:var(--r);font-family:'Zen Kaku Gothic New',sans-serif;font-size:16px;font-weight:900;color:#0d1117;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;position:relative;overflow:hidden;transition:all .2s}
+.gbtn:active{transform:scale(.98);filter:brightness(.9)}
+.gbtn::after{content:'';position:absolute;top:0;left:-100%;width:50%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.2),transparent);animation:shim 2.5s infinite}
+@keyframes shim{100%{left:200%}}
+.sbtn{width:54px;padding:16px 0;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s}
+.sbtn:active{background:var(--surface2);transform:scale(.96)}
+.sbtn.live{border-color:var(--accent2)}
+.rcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;display:none}
+.rstats{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:9px;margin-top:9px}
+.st{text-align:center}
+.st .v{font-family:'Space Mono',monospace;font-size:16px;font-weight:700;color:var(--accent);display:block}
+.st .l{font-size:10px;color:var(--muted);margin-top:2px}
+
+/* MAP SHARE BUTTONS */
+.share-section{display:none;flex-direction:column;gap:9px}
+.share-label{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2px}
+.share-row{display:flex;gap:9px}
+.share-btn{flex:1;padding:14px 10px;border-radius:var(--r);font-family:'Zen Kaku Gothic New',sans-serif;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:all .2s;border:none}
+.share-btn:active{transform:scale(.97)}
+.btn-apple{background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.2);color:var(--text)}
+.btn-apple:active{background:rgba(255,255,255,.12)}
+.btn-google{background:rgba(88,166,255,.12);border:1.5px solid var(--accent2);color:var(--accent2)}
+.btn-google:active{background:rgba(88,166,255,.2)}
+.watch-note{background:rgba(57,211,83,.07);border:1px solid rgba(57,211,83,.25);border-radius:12px;padding:11px 14px;font-size:12px;color:rgba(57,211,83,.9);line-height:1.6;display:none}
+.watch-note strong{display:block;margin-bottom:3px;font-size:13px}
+.btn-komoot{background:rgba(255,180,0,.1);border:1.5px solid rgba(255,180,0,.5)!important;color:#ffb400!important;font-weight:700}
+.btn-komoot:active{background:rgba(255,180,0,.2)!important}
+.komoot-note{background:rgba(255,180,0,.07);border:1px solid rgba(255,180,0,.25);border-radius:12px;padding:12px 14px;font-size:12px;color:rgba(255,200,50,.95);line-height:1.8}
+.komoot-note strong{display:block;margin-bottom:4px;font-size:13px}
+
+.hlist{max-height:50dvh;overflow-y:auto;display:flex;flex-direction:column;gap:9px;margin-top:4px}
+.hi{background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:11px 13px;cursor:pointer;display:flex;align-items:center;gap:11px}
+.hi:active{background:#1f2937}
+.hi-info{flex:1;min-width:0}
+.hi-name{font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hi-meta{font-size:10px;color:var(--muted);margin-top:2px;font-family:'Space Mono',monospace}
+.hi-km{font-family:'Space Mono',monospace;font-size:13px;color:var(--accent);font-weight:700;flex-shrink:0}
+.hempty{text-align:center;color:var(--muted);font-size:13px;padding:28px 0}
+.mb{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;backdrop-filter:blur(4px);align-items:flex-end}
+.mb.open{display:flex}
+.mo{width:100%;background:var(--surface);border-radius:22px 22px 0 0;border-top:1px solid var(--border);padding:0 18px 52px;animation:sup .3s cubic-bezier(.25,.46,.45,.94)}
+@keyframes sup{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.mh{width:38px;height:4px;background:var(--border);border-radius:2px;margin:13px auto 18px}
+.mo h2{font-size:17px;font-weight:900;margin-bottom:14px}
+.mo input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:13px 15px;font-size:16px;color:var(--text);outline:none;margin-bottom:5px;font-family:'Zen Kaku Gothic New',sans-serif;-webkit-appearance:none}
+.mo input:focus{border-color:var(--accent)}
+.mo-hint{font-size:11px;color:var(--muted);margin-bottom:12px}
+.macts{display:flex;gap:9px;margin-top:8px}
+.mcancel{flex:1;padding:13px;border-radius:11px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:14px;font-weight:700;font-family:'Zen Kaku Gothic New',sans-serif;cursor:pointer}
+.mok{flex:2;padding:13px;border-radius:11px;border:none;background:var(--accent);color:#0d1117;font-size:14px;font-weight:900;font-family:'Zen Kaku Gothic New',sans-serif;cursor:pointer}
+.mclr{padding:9px 14px;border-radius:9px;border:1px solid rgba(247,129,102,.4);background:transparent;color:var(--accent3);font-size:12px;font-family:'Zen Kaku Gothic New',sans-serif;cursor:pointer;margin-bottom:11px;display:none}
+.lol{display:none;position:fixed;inset:0;background:rgba(13,17,23,.88);z-index:300;align-items:center;justify-content:center;flex-direction:column;gap:14px;backdrop-filter:blur(6px)}
+.lol.on{display:flex}
+.spin{width:44px;height:44px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:sp .9s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.ltxt{font-size:13px;color:var(--muted)}
+.toast{position:fixed;bottom:72px;left:50%;transform:translateX(-50%) translateY(18px);background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:9px 18px;font-size:12px;color:var(--text);opacity:0;transition:all .3s;z-index:400;white-space:nowrap;max-width:88vw;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.ok{border-color:var(--accent);color:var(--accent)}
+
+/* PWA BANNER */
+.pwa-banner{display:none;background:rgba(57,211,83,.1);border-bottom:1px solid rgba(57,211,83,.25);padding:10px 16px;align-items:center;justify-content:space-between;gap:12px}
+.pwa-banner.show{display:flex}
+.pwa-text{display:flex;align-items:center;gap:10px}
+.pwa-close{color:var(--muted);font-size:16px;padding:4px 8px;cursor:pointer;flex-shrink:0}
+</style>
+</head>
+<body>
+
+<!-- PWA install banner -->
+<div class="pwa-banner" id="pwaBanner">
+  <div class="pwa-text">
+    <span style="font-size:18px">📲</span>
+    <div>
+      <div style="font-weight:700;font-size:13px">ホーム画面に追加する</div>
+      <div style="font-size:11px;color:var(--muted)">Safari下部の共有ボタン →「ホーム画面に追加」</div>
+    </div>
+  </div>
+  <div class="pwa-close" onclick="closePWABanner()">✕</div>
+</div>
+
+<header class="hdr">
+  <h1>Walk<span>Loop</span></h1>
+  <div class="hdr-right">
+    <div class="icon-btn" onclick="openHist()">🕐</div>
+  </div>
+</header>
+
+<div id="mapWrap">
+  <canvas id="mapEl"></canvas>
+  <div class="map-ctrl">
+    <div class="mc" onclick="zoomIn()">＋</div>
+    <div class="mc" onclick="zoomOut()">－</div>
+    <div class="mc" onclick="centerMap()">⊕</div>
+  </div>
+  <div class="map-pill" id="pill"></div>
+  <div class="map-attr">© OpenStreetMap contributors</div>
+</div>
+
+<div class="panel">
+
+  <div>
+    <div class="slabel">出発地 / 目的地</div>
+    <div class="loc-group">
+      <div class="loc-row" onclick="openLoc('start')">
+        <div class="li s">🚩</div>
+        <div class="lt"><div class="ll">出発地</div><div class="ln" id="sName">タップして設定</div></div>
+        <div class="la">›</div>
+      </div>
+      <div class="loc-row" onclick="openLoc('end')">
+        <div class="li e">🏁</div>
+        <div class="lt"><div class="ll">目的地（省略で往復ループ）</div><div class="ln" id="eName">出発地と同じ</div></div>
+        <div class="la">›</div>
+      </div>
+    </div>
+    <div class="cur-btn" onclick="useGPS()">📍 現在地を出発地として使用</div>
+  </div>
+
+  <div>
+    <div class="slabel">ウォーキング距離</div>
+    <div class="dist-box">
+      <div class="chips" id="dchips">
+        <div class="chip" data-km="2">2 km</div>
+        <div class="chip" data-km="3">3 km</div>
+        <div class="chip on" data-km="5">5 km</div>
+        <div class="chip" data-km="8">8 km</div>
+        <div class="chip" data-km="10">10 km</div>
+        <div class="chip" data-km="15">15 km</div>
+      </div>
+      <div class="cust">
+        <input type="number" id="ckm" placeholder="カスタム" min="0.5" max="60" step="0.5" oninput="custKm(this)">
+        <span class="u">km</span>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="slabel">ルートスタイル</div>
+    <div class="style-box">
+      <div class="schips">
+        <div class="sc on" data-s="loop">🔄 標準ループ</div>
+        <div class="sc" data-s="random">🎲 ランダム</div>
+        <div class="sc" data-s="park">🌳 公園優先</div>
+        <div class="sc" data-s="scenic">🗻 景色重視</div>
+        <div class="sc" data-s="zigzag">⚡ ジグザグ</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="brow">
+    <button class="gbtn" onclick="generate()"><span>⚡</span>ルートを生成</button>
+    <button class="sbtn" id="sbtn" onclick="shuffle()" title="別のルートに変更">🔀</button>
+  </div>
+
+  <div class="rcard" id="rcard">
+    <div class="slabel">ルート情報</div>
+    <div class="rstats">
+      <div class="st"><span class="v" id="vd">—</span><div class="l">距離</div></div>
+      <div class="st"><span class="v" id="vt">—</span><div class="l">所要時間</div></div>
+      <div class="st"><span class="v" id="vs">—</span><div class="l">歩数目安</div></div>
+      <div class="st"><span class="v" id="vc">—</span><div class="l">消費kcal</div></div>
+    </div>
+  </div>
+
+  <!-- 地図アプリ共有 -->
+  <div class="share-section" id="shareSection">
+    <div class="slabel">地図アプリで開く</div>
+    <div class="share-row">
+      <button class="share-btn btn-apple" onclick="openAppleMaps()">
+        🗺️ Apple Maps
+      </button>
+      <button class="share-btn btn-google" onclick="openGoogleMaps()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+        Google Maps
+      </button>
+    </div>
+
+    <!-- Komoot & GPX -->
+    <div class="slabel" style="margin-top:14px">⌚ Komoot で開く（Apple Watch対応・無料）</div>
+    <button class="share-btn btn-komoot" onclick="exportGPX()" style="width:100%;margin-bottom:9px">
+      🏔️ Komootで開く（共有）
+    </button>
+    <div class="komoot-note">
+      <strong>📲 Apple Watchでナビする手順</strong><br>
+      ① 上のボタンをタップ → 共有シートが開く<br>
+      ② 共有先から <b>Komoot</b> を選択<br>
+      ③ KomootアプリでApple Watchアイコンをタップ<br>
+      ④ Apple Watch の Komoot を開いてナビ開始 ✅<br>
+      <span style="color:var(--muted);font-size:10px">※Komootアプリ（無料）＋ Apple Watch版Komoot（無料）が必要です</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- LOCATION MODAL -->
+<div class="mb" id="locMod" onclick="bgClose(event,'locMod')">
+  <div class="mo">
+    <div class="mh"></div>
+    <h2 id="modTitle">場所を設定</h2>
+    <input type="text" id="locIn" placeholder="住所・駅名・地名を入力…"
+      autocomplete="off" onkeydown="if(event.key==='Enter')setLoc()">
+    <div class="mo-hint">例: 東京都渋谷区、大阪駅、横浜中華街</div>
+    <button class="mclr" id="clrBtn" onclick="clearEnd()">目的地をクリア（ループに戻す）</button>
+    <div class="macts">
+      <button class="mcancel" onclick="closeLoc()">キャンセル</button>
+      <button class="mok" onclick="setLoc()">設定する</button>
+    </div>
+  </div>
+</div>
+
+<!-- HISTORY MODAL -->
+<div class="mb" id="histMod" onclick="bgClose(event,'histMod')">
+  <div class="mo">
+    <div class="mh"></div>
+    <h2>ルート履歴</h2>
+    <div class="hlist" id="hlist"></div>
+    <div class="macts" style="margin-top:14px">
+      <button class="mcancel" onclick="closeHist()">閉じる</button>
+      <button class="mok" style="background:var(--accent3);color:#fff" onclick="clearHist()">履歴を削除</button>
+    </div>
+  </div>
+</div>
+
+<div class="lol" id="lol"><div class="spin"></div><div class="ltxt" id="ltxt">計算中…</div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const S={start:null,end:null,km:5,style:'loop',route:null,field:'start',zoom:14,clat:35.6812,clng:139.7671,seed:0,waypoints:[]};
+const cv=document.getElementById('mapEl');
+const cx=cv.getContext('2d');
+let TC={};
+
+function _wld(lat,lng){const n=1<<S.zoom;return{x:(lng+180)/360*n,y:(1-Math.log(Math.tan(lat*Math.PI/180)+1/Math.cos(lat*Math.PI/180))/Math.PI)/2*n};}
+function w2c(lat,lng){const cw=_wld(S.clat,S.clng),pw=_wld(lat,lng),dpr=devicePixelRatio||1;return{x:(pw.x-cw.x)*256+cv.width/dpr/2,y:(pw.y-cw.y)*256+cv.height/dpr/2};}
+
+function draw(){
+  const dpr=devicePixelRatio||1,W=cv.width/dpr,H=cv.height/dpr;
+  cx.save();cx.scale(dpr,dpr);cx.clearRect(0,0,W,H);
+  const z=S.zoom,n=1<<z,cw=_wld(S.clat,S.clng),ts=256;
+  const x0=Math.floor(cw.x-W/(2*ts)),x1=Math.ceil(cw.x+W/(2*ts));
+  const y0=Math.floor(cw.y-H/(2*ts)),y1=Math.ceil(cw.y+H/(2*ts));
+  for(let tx=x0;tx<=x1;tx++)for(let ty=y0;ty<=y1;ty++){
+    if(ty<0||ty>=n)continue;
+    const px=(tx-cw.x)*ts+W/2,py=(ty-cw.y)*ts+H/2;
+    const ntx=((tx%n)+n)%n,k=`${z}/${ntx}/${ty}`;
+    if(TC[k]?.complete){cx.drawImage(TC[k],Math.round(px),Math.round(py),ts,ts);}
+    else{
+      cx.fillStyle='#161b22';cx.fillRect(Math.round(px),Math.round(py),ts,ts);
+      cx.strokeStyle='#30363d';cx.lineWidth=0.5;cx.strokeRect(Math.round(px)+.5,Math.round(py)+.5,ts-1,ts-1);
+      if(!TC[k]){
+        const img=new Image();
+        // crossOriginなしで読み込む（GitHub Pages等でのCORSブロック回避）
+        img.onload=()=>{TC[k]=img;draw();};
+        img.onerror=()=>{
+          // サブドメインを変えて1回リトライ
+          if(!img._retried){
+            img._retried=true;
+            img.src=`https://tile.openstreetmap.org/${z}/${ntx}/${ty}.png`;
+          } else { TC[k]=null; }
+        };
+        TC[k]=img; // 先にセットして二重リクエスト防止
+        img.src=`https://${'abc'[Math.abs(tx+ty)%3]}.tile.openstreetmap.org/${z}/${ntx}/${ty}.png`;
+      }
+    }
+  }
+  if(S.route?.length>1){
+    const pts=S.route.map(p=>w2c(p.lat,p.lng));
+    cx.beginPath();cx.moveTo(pts[0].x,pts[0].y);pts.forEach(p=>cx.lineTo(p.x,p.y));
+    cx.strokeStyle='rgba(57,211,83,.2)';cx.lineWidth=14;cx.lineJoin='round';cx.lineCap='round';cx.setLineDash([]);cx.stroke();
+    cx.beginPath();cx.moveTo(pts[0].x,pts[0].y);pts.forEach(p=>cx.lineTo(p.x,p.y));
+    cx.strokeStyle='#39d353';cx.lineWidth=3.5;cx.stroke();
+    for(let i=30;i<pts.length-1;i+=50){
+      const dx=pts[i+1].x-pts[i].x,dy=pts[i+1].y-pts[i].y,len=Math.hypot(dx,dy);if(len<1)continue;
+      const mx=pts[i].x+dx*.5,my=pts[i].y+dy*.5,nx=dx/len,ny=dy/len;
+      cx.beginPath();cx.moveTo(mx-nx*5-ny*4,my-ny*5+nx*4);cx.lineTo(mx+nx*5,my+ny*5);cx.lineTo(mx-nx*5+ny*4,my-ny*5-nx*4);
+      cx.strokeStyle='rgba(57,211,83,.65)';cx.lineWidth=1.8;cx.stroke();
+    }
+  }
+  if(S.start){const p=w2c(S.start.lat,S.start.lng);mkr(p.x,p.y,'#39d353','🚩');}
+  if(S.end){const p=w2c(S.end.lat,S.end.lng);mkr(p.x,p.y,'#f78166','🏁');}
+  cx.restore();
+}
+
+function mkr(x,y,col,em){
+  cx.beginPath();cx.arc(x,y,15,0,Math.PI*2);cx.fillStyle='rgba(0,0,0,.3)';cx.fill();
+  cx.beginPath();cx.arc(x,y,12,0,Math.PI*2);cx.fillStyle=col+'22';cx.fill();
+  cx.strokeStyle=col;cx.lineWidth=2.5;cx.stroke();
+  cx.font='14px serif';cx.textAlign='center';cx.textBaseline='middle';cx.fillText(em,x,y);
+}
+
+function resize(){
+  const wrap=document.getElementById('mapWrap'),dpr=devicePixelRatio||1;
+  cv.width=wrap.clientWidth*dpr;cv.height=wrap.clientHeight*dpr;
+  cv.style.width=wrap.clientWidth+'px';cv.style.height=wrap.clientHeight+'px';draw();
+}
+
+function fitBounds(poly){
+  const lats=poly.map(p=>p.lat),lngs=poly.map(p=>p.lng);
+  S.clat=(Math.min(...lats)+Math.max(...lats))/2;S.clng=(Math.min(...lngs)+Math.max(...lngs))/2;
+  const sp=Math.max(Math.max(...lats)-Math.min(...lats),Math.max(...lngs)-Math.min(...lngs));
+  S.zoom=sp<.008?16:sp<.02?15:sp<.05?14:sp<.12?13:sp<.25?12:11;TC={};
+}
+
+let t0=null,m0=null;
+cv.addEventListener('touchstart',e=>{if(e.touches.length===1)t0={x:e.touches[0].clientX,y:e.touches[0].clientY,lat:S.clat,lng:S.clng};},{passive:true});
+cv.addEventListener('touchmove',e=>{
+  if(!t0||e.touches.length!==1)return;
+  const mpp=156543.03392*Math.cos(S.clat*Math.PI/180)/(1<<S.zoom);
+  S.clng=t0.lng-(e.touches[0].clientX-t0.x)*mpp/111320;S.clat=t0.lat+(e.touches[0].clientY-t0.y)*mpp/111320;draw();
+},{passive:true});
+cv.addEventListener('touchend',()=>t0=null);
+cv.addEventListener('mousedown',e=>{m0={x:e.clientX,y:e.clientY,lat:S.clat,lng:S.clng};});
+window.addEventListener('mousemove',e=>{
+  if(!m0)return;
+  const mpp=156543.03392*Math.cos(S.clat*Math.PI/180)/(1<<S.zoom);
+  S.clng=m0.lng-(e.clientX-m0.x)*mpp/111320;S.clat=m0.lat+(e.clientY-m0.y)*mpp/111320;draw();
+});
+window.addEventListener('mouseup',()=>m0=null);
+function zoomIn(){if(S.zoom<18){S.zoom++;TC={};draw();}}
+function zoomOut(){if(S.zoom>9){S.zoom--;TC={};draw();}}
+function centerMap(){const l=S.start||S.end;if(l){S.clat=l.lat;S.clng=l.lng;draw();}}
+
+/* CHIPS */
+document.getElementById('dchips').addEventListener('click',e=>{
+  const c=e.target.closest('.chip');if(!c)return;
+  document.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');S.km=parseFloat(c.dataset.km);document.getElementById('ckm').value='';
+});
+function custKm(i){const v=parseFloat(i.value);if(v>0&&v<=60){document.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));S.km=v;}}
+document.querySelector('.schips').addEventListener('click',e=>{
+  const c=e.target.closest('.sc');if(!c)return;
+  document.querySelectorAll('.sc').forEach(x=>x.classList.remove('on'));c.classList.add('on');S.style=c.dataset.s;
+});
+
+/* LOCATION MODAL */
+function openLoc(f){
+  S.field=f;
+  document.getElementById('modTitle').textContent=f==='start'?'出発地を設定':'目的地を設定';
+  document.getElementById('locIn').value='';
+  document.getElementById('clrBtn').style.display=(f==='end'&&S.end)?'block':'none';
+  document.getElementById('locMod').classList.add('open');
+  setTimeout(()=>document.getElementById('locIn').focus(),350);
+}
+function closeLoc(){document.getElementById('locMod').classList.remove('open');}
+function clearEnd(){S.end=null;document.getElementById('eName').textContent='出発地と同じ';closeLoc();}
+function bgClose(e,id){if(e.target.id===id)document.getElementById(id).classList.remove('open');}
+
+/* Geocoding via Claude API */
+async function setLoc(){
+  const q=document.getElementById('locIn').value.trim();if(!q)return;
+  closeLoc();showLoad('場所を検索中…');
+  try{
+    // Nominatim（OSM）で住所検索 - GitHub Pagesからアクセス可能
+    const url=`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&accept-language=ja`;
+    const res=await fetch(url,{headers:{'User-Agent':'WalkLoopApp/2.0'}});
+    const data=await res.json();
+    if(!data.length){toast('場所が見つかりませんでした');hideLoad();return;}
+    const shortName=data[0].display_name.split(',').slice(0,2).join(' ').trim();
+    const loc={name:shortName,lat:parseFloat(data[0].lat),lng:parseFloat(data[0].lon)};
+    if(S.field==='start'){S.start=loc;document.getElementById('sName').textContent=loc.name;}
+    else{S.end=loc;document.getElementById('eName').textContent=loc.name;}
+    S.clat=loc.lat;S.clng=loc.lng;TC={};draw();
+    toast(loc.name+'を設定しました','ok');
+  }catch(e){toast('エラー: '+e.message);}
+  hideLoad();
+}
+
+function useGPS(){
+  if(!navigator.geolocation){toast('位置情報が使えません');return;}
+  showLoad('現在地を取得中…');
+  navigator.geolocation.getCurrentPosition(
+    pos=>{
+      const{latitude:lat,longitude:lng}=pos.coords;
+      S.start={name:'現在地 📍',lat,lng};
+      document.getElementById('sName').textContent='現在地 📍';
+      S.clat=lat;S.clng=lng;TC={};draw();hideLoad();toast('現在地を設定しました','ok');
+    },
+    ()=>{hideLoad();toast('位置情報をONにするか、住所を手動入力してください');},
+    {timeout:12000,enableHighAccuracy:true}
+  );
+}
+
+/* WAYPOINTS */
+// scale: 距離倍率（繰り返し調整用）
+function mkWP(origin,dest,km,style,seed,scale=1.0){
+  const rnd=(()=>{let s=seed*9999999|0;return()=>{s=(s*1664525+1013904223)&0x7fffffff;return s/0x7fffffff};})();
+  // 道路は直線距離の約1.3倍になるため、0.38→0.30に下げてベースを抑える
+  const base=km/(2*Math.PI*6371)*360*0.30*scale;
+  const latD=base, lngD=base/Math.cos(origin.lat*Math.PI/180);
+  const isLoop=!dest;
+  let off;
+  if(style==='random'){
+    const n=4+Math.floor(rnd()*3);
+    off=Array.from({length:n},(_,i)=>{const a=(i/n)*2*Math.PI+rnd()*1.5,r=.25+rnd()*.5;return{dl:Math.sin(a)*latD*r,dg:Math.cos(a)*lngD*r};});
+  }else if(style==='park'){
+    off=[{dl:latD*(.4+rnd()*.2),dg:lngD*(.1-rnd()*.2)},{dl:latD*(.55+rnd()*.1),dg:lngD*(.3+rnd()*.2)},{dl:latD*(.2+rnd()*.1),dg:lngD*(.55+rnd()*.1)},{dl:latD*(-.1+rnd()*.2),dg:lngD*(.35+rnd()*.1)}];
+  }else if(style==='scenic'){
+    off=[{dl:latD*(.6+rnd()*.1),dg:lngD*(.05+rnd()*.1)},{dl:latD*(.5+rnd()*.1),dg:-lngD*(.3+rnd()*.1)},{dl:-latD*(.1+rnd()*.1),dg:-lngD*(.45+rnd()*.1)},{dl:-latD*(.3+rnd()*.1),dg:0}];
+  }else if(style==='zigzag'){
+    off=Array.from({length:6},(_,i)=>({dl:latD*(.15+i*.12),dg:lngD*(i%2===0?1:-1)*(.25+rnd()*.15)}));
+  }else{
+    off=[0,1,2,3].map(i=>{const a=(i/4)*2*Math.PI+Math.PI/4+(rnd()-.5)*.4,r=.4+(rnd()-.5)*.08;return{dl:Math.sin(a)*latD*r,dg:Math.cos(a)*lngD*r};});
+  }
+  const mid=off.map(o=>({lat:origin.lat+o.dl,lng:origin.lng+o.dg}));
+  return isLoop?[origin,...mid,origin]:[origin,...mid,dest];
+}
+
+// Haversine距離（メートル）
+function haversineTotal(poly){
+  let d=0;
+  for(let i=0;i<poly.length-1;i++){
+    const R=6371000,φ1=poly[i].lat*Math.PI/180,φ2=poly[i+1].lat*Math.PI/180;
+    const Δφ=(poly[i+1].lat-poly[i].lat)*Math.PI/180,Δλ=(poly[i+1].lng-poly[i].lng)*Math.PI/180;
+    const a=Math.sin(Δφ/2)**2+Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
+    d+=R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+  }
+  return d;
+}
+
+// OSRMでルート取得（失敗時null）
+async function fetchOSRM(wp){
+  try{
+    const coords=wp.map(p=>`${p.lng.toFixed(6)},${p.lat.toFixed(6)}`).join(';');
+    const r=await fetch(`https://router.project-osrm.org/route/v1/foot/${coords}?overview=full&geometries=geojson`);
+    if(!r.ok) return null;
+    const d=await r.json();
+    if(!d.routes?.length) return null;
+    return {poly:d.routes[0].geometry.coordinates.map(c=>({lat:c[1],lng:c[0]})),distM:d.routes[0].distance,durS:d.routes[0].duration};
+  }catch{return null;}
+}
+
+/* GENERATE */
+async function doGen(isShuffle=false){
+  if(!S.start){toast('出発地を設定してください');return;}
+  showLoad(isShuffle?'別のルートを探しています…':'ルートを計算中…');
+  S.seed=Math.random();
+  try{
+    const targetM=S.km*1000;
+    const tolerance=0.20; // ±20%以内を目標
+    let poly=null,distM=0,durS=0,wp;
+    let scale=1.0;
+
+    // OSRMが使える場合：最大3回スケール調整して目標距離に近づける
+    let osrmOk=false;
+    for(let attempt=0;attempt<3;attempt++){
+      wp=mkWP(S.start,S.end,S.km,S.style,S.seed,scale);
+      const res=await fetchOSRM(wp);
+      if(!res) break;
+      osrmOk=true;
+      poly=res.poly; distM=res.distM; durS=res.durS;
+      const ratio=targetM/distM;
+      if(Math.abs(ratio-1)<=tolerance) break; // 範囲内ならOK
+      scale*=ratio; // ずれた分だけスケール補正
+    }
+
+    // OSRMが使えない場合：直線補間＋スケール調整
+    if(!osrmOk){
+      for(let attempt=0;attempt<3;attempt++){
+        wp=mkWP(S.start,S.end,S.km,S.style,S.seed,scale);
+        const pts=[];
+        for(let i=0;i<wp.length-1;i++){const a=wp[i],b=wp[i+1];for(let j=0;j<=30;j++)pts.push({lat:a.lat+(b.lat-a.lat)*j/30,lng:a.lng+(b.lng-a.lng)*j/30});}
+        const d=haversineTotal(pts);
+        const ratio=targetM/d;
+        if(Math.abs(ratio-1)<=tolerance){poly=pts;distM=d;break;}
+        scale*=ratio;
+        poly=pts; distM=d;
+      }
+      durS=distM/1.2;
+    }
+
+    S.waypoints=wp;
+    S.route=poly;fitBounds(poly);draw();
+    const km=(distM/1000).toFixed(2);
+    // 時速5km固定で計算
+    const min=Math.round(distM/83.33);
+    const timeStr=min>=60?`${Math.floor(min/60)}時間${min%60}分`:min+'分';
+    document.getElementById('vd').textContent=km+'km';
+    document.getElementById('vt').textContent=timeStr;
+    document.getElementById('vs').textContent=((distM/0.78)/1000).toFixed(1)+'k';
+    document.getElementById('vc').textContent=Math.round(distM*0.06);
+    document.getElementById('rcard').style.display='block';
+    document.getElementById('shareSection').style.display='flex';
+    document.getElementById('watchNote').style.display='block';
+    document.getElementById('sbtn').classList.add('live');
+    const pill=document.getElementById('pill');pill.textContent=`📍 ${km} km · ${timeStr}`;pill.style.display='block';
+    saveHist({km,min,timeStr,style:S.style,startName:S.start.name,poly,wp});
+    toast(isShuffle?'別のルートに更新しました！':'ルートを生成しました！','ok');
+  }catch(e){
+    // ルートが生成できていない場合のみエラー表示
+    if(!S.route) toast('ルート生成に失敗しました。再試行してください。');
+    console.error(e);
+  }
+  hideLoad();
+}
+function generate(){doGen(false);}
+function shuffle(){doGen(true);}
+
+/* ── APPLE MAPS / GOOGLE MAPS 共有 ── */
+
+// ウェイポイントを間引いて最大9点にする（Apple Maps URL制限対策）
+function pickWP(arr, max){
+  if(arr.length<=max) return arr;
+  const out=[arr[0]];
+  const step=(arr.length-2)/(max-2);
+  for(let i=1;i<max-1;i++) out.push(arr[Math.round(i*step)]);
+  out.push(arr[arr.length-1]);
+  return out;
+}
+
+function openAppleMaps(){
+  if(!S.start||!S.route) return;
+  // Apple Maps URL scheme: saddr + daddr + daddr=+to:経由地 の連鎖で複数waypoint
+  // 最大5点（出発＋中間3点＋終点）に間引く
+  const wp=pickWP(S.waypoints,5);
+  const origin=`${S.start.lat.toFixed(6)},${S.start.lng.toFixed(6)}`;
+  // 最初のdaddrは2点目、その後+to:で繋ぐ
+  const stops=wp.slice(1); // 出発地以外
+  let daddr=stops.map(p=>`${p.lat.toFixed(6)},${p.lng.toFixed(6)}`).join('+to:');
+  const url=`maps://?saddr=${origin}&daddr=${daddr}&dirflg=w`;
+  window.location.href=url;
+  toast('Apple Mapsを開いています…');
+}
+
+function openGoogleMaps(){
+  if(!S.start||!S.route) return;
+  // Google Maps は中間waypoint最大8点、| 区切りで渡す
+  const wp=pickWP(S.waypoints,9); // 出発+中間7+終点
+  const origin=`${S.start.lat.toFixed(6)},${S.start.lng.toFixed(6)}`;
+  const dest=wp[wp.length-1];
+  const destStr=`${dest.lat.toFixed(6)},${dest.lng.toFixed(6)}`;
+  const vias=wp.slice(1,-1).map(p=>`${p.lat.toFixed(6)},${p.lng.toFixed(6)}`).join('|');
+  // Google Maps アプリURL（iOSでアプリが自動起動）
+  let url=`comgooglemaps://?saddr=${origin}&daddr=${destStr}&waypoints=${encodeURIComponent(vias)}&directionsmode=walking`;
+  // アプリが入っていない場合はWebにフォールバック
+  const webUrl=`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destStr}&travelmode=walking${vias?'&waypoints='+encodeURIComponent(vias):''}`;
+  // iOSはcomgooglemaps://を試みてフォールバック
+  const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent);
+  if(isIOS){
+    // アプリを試みて500ms後にWebフォールバック
+    window.location.href=url;
+    setTimeout(()=>{ window.open(webUrl,'_blank'); },500);
+  } else {
+    window.open(webUrl,'_blank');
+  }
+  toast('Google Mapsを開いています…');
+}
+
+/* GPX EXPORT & SHARE */
+async function exportGPX(){
+  if(!S.route||!S.route.length){toast('先にルートを生成してください');return;}
+
+  const name = (S.start?.name||'WalkLoop') + '_' + new Date().toISOString().slice(0,10);
+  const now  = new Date().toISOString();
+
+  // ルートポイントを間引き（最大500点）
+  const pts  = S.route;
+  const step = pts.length > 500 ? Math.ceil(pts.length/500) : 1;
+  const sampled = pts.filter((_,i)=> i%step===0 || i===pts.length-1);
+
+  const trkpts = sampled.map(p =>
+    `      <trkpt lat="${p.lat.toFixed(7)}" lon="${p.lng.toFixed(7)}"></trkpt>`
+  ).join('\n');
+
+  const gpx = `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="WalkLoop" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <name>${name}</name>
+    <time>${now}</time>
+  </metadata>
+  <trk>
+    <name>${name}</name>
+    <trkseg>
+${trkpts}
+    </trkseg>
+  </trk>
+</gpx>`;
+
+  // iOSはapplication/gpx+xmlを認識しないのでtext/xmlで渡す
+  const blob = new Blob([gpx], {type:'text/xml'});
+  const file = new File([blob], name + '.gpx', {type:'text/xml'});
+
+  // iOS Safari Web Share API (files only, title/textを入れるとtxtが生成される)
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try{
+      await navigator.share({ files:[file] });
+      return;
+    }catch(e){
+      if(e.name==='AbortError') return;
+      // share失敗時はダウンロードへフォールバック
+    }
+  }
+
+  // フォールバック: 通常ダウンロード
+  const url = URL.createObjectURL(new Blob([gpx], {type:'application/gpx+xml'}));
+  const a   = document.createElement('a');
+  a.href    = url;
+  a.download= name + '.gpx';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('GPXファイルを保存しました！','ok');
+}
+
+/* HISTORY */
+const HK='wl_hist_v4';
+function loadHist(){try{return JSON.parse(localStorage.getItem(HK))||[];}catch{return[];}}
+function saveHist(e){const h=loadHist();h.unshift({...e,date:new Date().toLocaleDateString('ja-JP')});if(h.length>20)h.pop();try{localStorage.setItem(HK,JSON.stringify(h));}catch{}}
+function clearHist(){try{localStorage.removeItem(HK);}catch{}closeHist();toast('履歴を削除しました');}
+const SL={loop:'🔄',random:'🎲',park:'🌳',scenic:'🗻',zigzag:'⚡'};
+function openHist(){
+  const h=loadHist(),el=document.getElementById('hlist');
+  el.innerHTML=h.length?h.map((x,i)=>`<div class="hi" onclick="loadHR(${i})"><div style="font-size:20px">${SL[x.style]||'🗺️'}</div><div class="hi-info"><div class="hi-name">${x.startName||'不明'} 発</div><div class="hi-meta">${x.date} · ${x.style} · ${x.min}分</div></div><div class="hi-km">${x.km}km</div></div>`).join(''):'<div class="hempty">まだ履歴がありません</div>';
+  document.getElementById('histMod').classList.add('open');
+}
+function closeHist(){document.getElementById('histMod').classList.remove('open');}
+function loadHR(i){
+  const h=loadHist()[i];if(!h?.poly)return;
+  S.route=h.poly;if(h.wp)S.waypoints=h.wp;fitBounds(h.poly);draw();
+  document.getElementById('vd').textContent=h.km+'km';
+  document.getElementById('vt').textContent=h.min+'分';
+  document.getElementById('vs').textContent=((parseFloat(h.km)*1000/0.78)/1000).toFixed(1)+'k';
+  document.getElementById('vc').textContent=Math.round(parseFloat(h.km)*60);
+  document.getElementById('rcard').style.display='block';
+  document.getElementById('shareSection').style.display='flex';
+  document.getElementById('watchNote').style.display='block';
+  const pill=document.getElementById('pill');pill.textContent=`📍 ${h.km} km · ${h.min}分`;pill.style.display='block';
+  closeHist();toast('過去のルートを表示しました');
+}
+
+/* UTILS */
+function showLoad(m){document.getElementById('ltxt').textContent=m||'計算中…';document.getElementById('lol').classList.add('on');}
+function hideLoad(){document.getElementById('lol').classList.remove('on');}
+let tt;
+function toast(m,t=''){clearTimeout(tt);const el=document.getElementById('toast');el.textContent=m;el.className='toast'+(t?' '+t:'');el.classList.add('show');tt=setTimeout(()=>el.classList.remove('show'),3200);}
+
+window.addEventListener('load',()=>{
+  resize();
+  navigator.geolocation?.getCurrentPosition(p=>{S.clat=p.coords.latitude;S.clng=p.coords.longitude;TC={};draw();},()=>{});
+
+  // Service Worker登録
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  }
+
+  // PWAバナー：スタンドアロン（ホーム画面から起動）でなければ表示
+  const isStandalone = window.navigator.standalone === true
+    || window.matchMedia('(display-mode: standalone)').matches;
+  const bannerDismissed = localStorage.getItem('pwa_banner_dismissed');
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  if(isIOS && !isStandalone && !bannerDismissed){
+    document.getElementById('pwaBanner').classList.add('show');
+  }
+});
+window.addEventListener('resize',()=>{TC={};resize();});
+
+function closePWABanner(){
+  document.getElementById('pwaBanner').classList.remove('show');
+  localStorage.setItem('pwa_banner_dismissed','1');
+}
+</script>
+</body>
+</html>

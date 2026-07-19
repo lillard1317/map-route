@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>WalkLoop</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="WalkLoop">
+<meta name="theme-color" content="#080e1a">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" sizes="192x192" href="icon.png">
+<link rel="apple-touch-icon" sizes="512x512" href="icon-512.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600&family=Space+Grotesk:wght@300;400;500;600&family=JetBrains+Mono:wght@200;300;400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #080e1a;
+  --bg2:      #0d1525;
+  --surface:  #111c2e;
+  --surface2: #162035;
+  --surface3: #1c2940;
+  --border:   rgba(255,255,255,0.07);
+  --border2:  rgba(255,255,255,0.12);
+  --text:     #eef2ff;
+  --text2:    #8899bb;
+  --text3:    #4a5a78;
+  --accent:   #4fc3f7;
+  --accent-glow: rgba(79,195,247,0.15);
+  --gold:     #f0c040;
+  --gold-glow:rgba(240,192,64,0.15);
+  --green:    #43e97b;
+  --green-glow:rgba(67,233,123,0.12);
+  --red:      #ff6b6b;
+  --r:        16px;
+  --font:     'Outfit', sans-serif;
+  --mono:     'JetBrains Mono', monospace;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  overflow-x: hidden;
+  font-weight: 300;
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+}
+
+.hdr {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(8,14,26,0.88);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  height: 58px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.hdr-logo {
+  display: flex; align-items: center; gap: 8px;
+}
+.hdr-logo-mark {
+  width: 32px; height: 32px; border-radius: 8px;
+  overflow: hidden; flex-shrink: 0;
+  box-shadow: 0 0 12px rgba(79,195,247,0.25);
+}
+.hdr-logo-mark img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.hdr-logo-text {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 17px; font-weight: 500; letter-spacing: -0.04em;
+  color: var(--text);
+}
+.hdr-logo-text span { color: var(--accent); }
+.hdr-right { display: flex; gap: 8px; }
+.icon-btn {
+  width: 36px; height: 36px; border-radius: 10px;
+  border: 1px solid var(--border2);
+  background: var(--surface);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; cursor: pointer;
+  transition: all 0.15s;
+}
+.icon-btn:active { background: var(--surface2); transform: scale(0.92); }
+
+.pwa-banner {
+  display: none;
+  background: linear-gradient(90deg, var(--surface2), var(--surface3));
+  border-bottom: 1px solid var(--border2);
+  padding: 10px 16px; align-items: center; justify-content: space-between; gap: 12px;
+}
+.pwa-banner.show { display: flex; }
+.pwa-text { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text2); }
+.pwa-text strong { font-weight: 500; color: var(--text); }
+.pwa-close { color: var(--text3); font-size: 18px; cursor: pointer; padding: 2px 6px; }
+
+#mapWrap {
+  position: relative; width: 100%; height: 50dvh;
+  background: var(--bg2); overflow: hidden;
+}
+#mapEl { display: block; }
+.map-ctrl {
+  position: absolute; top: 12px; right: 12px;
+  display: flex; flex-direction: column; gap: 6px; z-index: 10;
+}
+.mc {
+  width: 36px; height: 36px;
+  background: rgba(13,21,37,0.85);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 300; cursor: pointer; color: var(--text2);
+  backdrop-filter: blur(12px);
+  transition: all 0.15s;
+}
+.mc:active { background: var(--surface2); color: var(--accent); transform: scale(0.92); }
+.map-pill {
+  position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+  background: rgba(8,14,26,0.9);
+  border: 1px solid var(--border2);
+  border-radius: 30px; padding: 7px 18px;
+  font-family: var(--mono); font-size: 11px; font-weight: 300;
+  color: var(--accent); letter-spacing: 0.04em;
+  backdrop-filter: blur(12px); z-index: 10; display: none; white-space: nowrap;
+  box-shadow: 0 0 20px rgba(79,195,247,0.15);
+}
+.map-attr { position: absolute; bottom: 4px; right: 8px; font-size: 9px; color: var(--text3); z-index: 10; }
+
+.panel { padding: 20px 18px 80px; display: flex; flex-direction: column; gap: 16px; position: relative; z-index: 1; }
+
+.section-label {
+  font-size: 10px; font-weight: 400; color: var(--text3);
+  letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 8px;
+}
+
+.loc-group {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); overflow: hidden;
+}
+.loc-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px; cursor: pointer;
+  transition: background 0.12s; position: relative;
+}
+.loc-row:not(:last-child)::after {
+  content: ''; position: absolute; bottom: 0; left: 48px; right: 0;
+  height: 1px; background: var(--border);
+}
+.loc-row:active { background: var(--surface2); }
+.li {
+  width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 13px;
+}
+.li.s { background: var(--green-glow); border: 1px solid rgba(67,233,123,0.2); }
+.li.e { background: rgba(255,107,107,0.1); border: 1px solid rgba(255,107,107,0.2); }
+.lt { flex: 1; min-width: 0; }
+.ll { font-size: 10px; color: var(--text3); letter-spacing: 0.06em; }
+.ln { font-size: 14px; font-weight: 400; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+.la { color: var(--text3); font-size: 13px; }
+
+.cur-btn {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 16px; margin-top: 8px;
+  background: var(--accent-glow);
+  border: 1px solid rgba(79,195,247,0.2);
+  border-radius: var(--r); cursor: pointer;
+  font-size: 13px; font-weight: 400; color: var(--accent);
+  font-family: var(--font); transition: all 0.15s;
+}
+.cur-btn:active { background: rgba(79,195,247,0.2); }
+
+.dist-box {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 16px;
+}
+.chips { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 8px; }
+.chip {
+  padding: 8px 14px; border-radius: 30px;
+  border: 1px solid var(--border2);
+  background: var(--surface2);
+  font-family: var(--mono); font-size: 11px; font-weight: 300;
+  color: var(--text2); cursor: pointer;
+  transition: all 0.15s; user-select: none; letter-spacing: 0.03em;
+}
+.chip.on {
+  background: var(--accent-glow);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.chip:active { transform: scale(0.94); }
+.cust { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.cust input {
+  flex: 1; background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 30px; padding: 9px 16px;
+  font-family: var(--mono); font-size: 12px; font-weight: 300; color: var(--text);
+  outline: none; -webkit-appearance: none; transition: border-color 0.2s;
+}
+.cust input:focus { border-color: var(--accent); }
+.cust .u { font-size: 11px; color: var(--text3); font-family: var(--mono); }
+
+.brow { display: flex; gap: 10px; }
+.gbtn {
+  flex: 1; padding: 17px;
+  background: linear-gradient(135deg, #1a6bff, #0ea5e9);
+  border: none; border-radius: var(--r);
+  font-family: var(--font); font-size: 15px; font-weight: 500;
+  letter-spacing: -0.01em; color: #fff;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 9px;
+  transition: all 0.2s;
+  box-shadow: 0 4px 24px rgba(30,107,255,0.35), 0 1px 0 rgba(255,255,255,0.1) inset;
+  position: relative; overflow: hidden;
+}
+.gbtn::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, transparent 60%);
+  pointer-events: none;
+}
+.gbtn:active { transform: scale(0.97); box-shadow: 0 2px 12px rgba(30,107,255,0.3); }
+.gbtn-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: rgba(255,255,255,0.6);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%,100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.3); }
+}
+.sbtn {
+  width: 56px; padding: 17px 0;
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: var(--r); font-size: 18px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: all 0.15s; color: var(--text2);
+}
+.sbtn:active { background: var(--surface2); transform: scale(0.95); }
+.sbtn.live { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 12px var(--accent-glow); }
+
+.rcard {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 18px; display: none;
+  position: relative; overflow: hidden;
+}
+.rcard::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--green), transparent);
+}
+.rstats { display: grid; grid-template-columns: repeat(4,1fr); gap: 0; margin-top: 12px; }
+.st { text-align: center; padding: 0 4px; position: relative; }
+.st:not(:last-child)::after {
+  content: ''; position: absolute; right: 0; top: 15%; height: 70%;
+  width: 1px; background: var(--border);
+}
+.st .v {
+  font-family: var(--mono); font-size: 16px; font-weight: 400;
+  color: var(--accent); display: block; letter-spacing: -0.02em;
+}
+.st .l { font-size: 9px; color: var(--text3); margin-top: 4px; letter-spacing: 0.08em; text-transform: uppercase; }
+
+.share-section { display: none; flex-direction: column; gap: 8px; }
+.share-row { display: flex; gap: 8px; }
+.share-btn {
+  flex: 1; padding: 13px 10px; border-radius: var(--r);
+  font-family: var(--font); font-size: 13px; font-weight: 400;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 7px;
+  transition: all 0.15s; border: 1px solid var(--border2);
+  background: var(--surface); color: var(--text2);
+}
+.share-btn:active { background: var(--surface2); transform: scale(0.97); }
+.btn-google { border-color: rgba(79,195,247,0.3); color: var(--accent); }
+.btn-komoot {
+  width: 100%; margin-top: 2px;
+  border-color: rgba(67,233,123,0.3); color: var(--green);
+  background: var(--green-glow);
+}
+.btn-komoot:active { background: rgba(67,233,123,0.18); }
+.komoot-note {
+  background: rgba(67,233,123,0.04);
+  border: 1px solid rgba(67,233,123,0.12);
+  border-radius: var(--r); padding: 14px 16px;
+  font-size: 12px; font-weight: 300; color: var(--text2); line-height: 2;
+}
+.komoot-note strong { display: block; margin-bottom: 4px; font-size: 13px; font-weight: 500; color: var(--text); }
+
+.hlist { max-height: 50dvh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.hi {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px 14px; cursor: pointer;
+  display: flex; align-items: center; gap: 12px; transition: all 0.12s;
+}
+.hi:active { background: var(--surface3); }
+.hi-info { flex: 1; min-width: 0; }
+.hi-name { font-size: 13px; font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hi-meta { font-size: 10px; color: var(--text3); margin-top: 3px; font-family: var(--mono); font-weight: 300; letter-spacing: 0.02em; }
+.hi-km { font-family: var(--mono); font-size: 14px; color: var(--accent); font-weight: 400; flex-shrink: 0; }
+.hempty { text-align: center; color: var(--text3); font-size: 13px; padding: 32px 0; font-weight: 300; }
+
+.mb {
+  display: none; position: fixed; inset: 0;
+  background: rgba(4,8,16,0.7); z-index: 200;
+  backdrop-filter: blur(12px); align-items: flex-end;
+}
+.mb.open { display: flex; }
+.mo {
+  width: 100%; background: var(--surface);
+  border-radius: 24px 24px 0 0;
+  border-top: 1px solid var(--border2);
+  padding: 0 20px 52px;
+  animation: sup 0.32s cubic-bezier(0.22,1,0.36,1);
+  box-shadow: 0 -16px 60px rgba(0,0,0,0.4);
+}
+@keyframes sup { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.mh { width: 36px; height: 3px; background: var(--border2); border-radius: 2px; margin: 14px auto 20px; }
+.mo h2 { font-size: 18px; font-weight: 300; letter-spacing: -0.03em; margin-bottom: 14px; }
+.mo input {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 12px; padding: 14px 16px; font-size: 16px; font-weight: 300;
+  color: var(--text); outline: none; margin-bottom: 6px;
+  font-family: var(--font); -webkit-appearance: none; transition: border-color 0.2s;
+}
+.mo input:focus { border-color: var(--accent); }
+.mo-hint { font-size: 11px; color: var(--text3); margin-bottom: 14px; }
+.macts { display: flex; gap: 10px; margin-top: 10px; }
+.mcancel {
+  flex: 1; padding: 14px; border-radius: 12px;
+  border: 1px solid var(--border2); background: transparent;
+  color: var(--text2); font-size: 14px; font-weight: 300; font-family: var(--font); cursor: pointer;
+}
+.mok {
+  flex: 2; padding: 14px; border-radius: 12px; border: none;
+  background: linear-gradient(135deg, #1a6bff, #0ea5e9);
+  color: #fff; font-size: 14px; font-weight: 500; font-family: var(--font); cursor: pointer;
+  box-shadow: 0 4px 16px rgba(30,107,255,0.3);
+}
+.mclr {
+  padding: 9px 14px; border-radius: 30px;
+  border: 1px solid rgba(255,107,107,0.3); background: transparent;
+  color: var(--red); font-size: 12px; font-family: var(--font);
+  cursor: pointer; margin-bottom: 12px; display: none;
+}
+
+.lol {
+  display: none; position: fixed; inset: 0;
+  background: rgba(8,14,26,0.88);
+  z-index: 300; align-items: center; justify-content: center;
+  flex-direction: column; gap: 16px; backdrop-filter: blur(16px);
+}
+.lol.on { display: flex; }
+.spin {
+  width: 36px; height: 36px;
+  border: 2px solid var(--border2);
+  border-top-color: var(--accent);
+  border-radius: 50%; animation: sp 0.8s linear infinite;
+  box-shadow: 0 0 16px var(--accent-glow);
+}
+@keyframes sp { to { transform: rotate(360deg); } }
+.ltxt { font-size: 12px; color: var(--text3); font-weight: 300; letter-spacing: 0.06em; text-transform: uppercase; }
+
+.rname-wrap { display:flex; align-items:center; gap:6px; }
+.route-name {
+  font-size:13px; font-weight:400; color:var(--text2);
+  max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.rename-btn {
+  background:none; border:none; cursor:pointer; font-size:13px;
+  color:var(--text3); padding:2px 4px; border-radius:6px;
+  transition:color 0.15s;
+}
+.rename-btn:active { color:var(--accent); }
+
+.hi-actions { display:flex; gap:6px; flex-shrink:0; }
+.hi-act-btn {
+  width:30px; height:30px; border-radius:8px; border:1px solid var(--border2);
+  background:var(--surface3); display:flex; align-items:center; justify-content:center;
+  font-size:13px; cursor:pointer; transition:all 0.15s; flex-shrink:0;
+}
+.hi-act-btn:active { transform:scale(0.92); }
+.hi-del { border-color:rgba(255,107,107,0.25); color:var(--red); }
+.hi-del:active { background:rgba(255,107,107,0.15); }
+.hi-ren { border-color:rgba(79,195,247,0.25); color:var(--accent); }
+.hi-ren:active { background:var(--accent-glow); }
+
+.waypin-box {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 14px;
+}
+.waypin-hint { font-size: 12px; color: var(--text3); font-weight: 300; }
+.waypin-list { display: flex; flex-direction: column; gap: 7px; margin-top: 10px; }
+.waypin-item {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 10px; padding: 9px 12px;
+}
+.waypin-label {
+  width: 24px; height: 24px; border-radius: 7px;
+  background: var(--gold-glow); border: 1px solid var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600; color: var(--gold); flex-shrink: 0;
+}
+.waypin-coord { flex: 1; font-family: var(--mono); font-size: 11px; color: var(--text2); }
+.waypin-del {
+  width: 26px; height: 26px; border-radius: 7px; border: none;
+  background: rgba(255,107,107,0.1); color: var(--red);
+  font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: all 0.15s;
+}
+.waypin-del:active { background: rgba(255,107,107,0.2); }
+.waypin-clear {
+  margin-top: 10px; width: 100%; padding: 8px;
+  background: none; border: 1px solid rgba(255,107,107,0.25);
+  border-radius: 9px; color: var(--red); font-size: 12px;
+  font-family: var(--font); cursor: pointer; transition: all 0.15s;
+}
+.waypin-clear:active { background: rgba(255,107,107,0.1); }
+.waypin-input-row {
+  display: flex; gap: 8px; margin-top: 10px;
+}
+.waypin-input-row input {
+  flex: 1; background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 9px; padding: 9px 12px;
+  font-family: var(--mono); font-size: 12px; color: var(--text);
+  outline: none; -webkit-appearance: none; transition: border-color 0.2s;
+  min-width: 0;
+}
+.waypin-input-row input:focus { border-color: var(--gold); }
+.waypin-add-btn {
+  padding: 9px 14px; border-radius: 9px; border: 1px solid var(--gold);
+  background: var(--gold-glow); color: var(--gold);
+  font-family: var(--font); font-size: 12px; font-weight: 500;
+  cursor: pointer; white-space: nowrap; transition: all 0.15s; flex-shrink: 0;
+}
+.waypin-add-btn:active { background: rgba(240,192,64,0.25); }
+
+.map-tap-hint {
+  position: absolute; top: 12px; left: 12px;
+  background: rgba(13,21,37,0.85); border: 1px solid var(--border2);
+  border-radius: 9px; padding: 5px 11px;
+  font-size: 11px; color: var(--text2); z-index: 10;
+  backdrop-filter: blur(8px); pointer-events: none;
+  display: none;
+}
+
+.toast {
+  position: fixed; bottom: 72px; left: 50%;
+  transform: translateX(-50%) translateY(16px);
+  background: var(--surface3);
+  border: 1px solid var(--border2);
+  border-radius: 30px; padding: 10px 20px;
+  font-size: 12px; font-weight: 300;
+  color: var(--text2);
+  opacity: 0; transition: all 0.3s; z-index: 400;
+  white-space: nowrap; max-width: 88vw; text-align: center;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+  letter-spacing: 0.02em;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.ok { border-color: rgba(67,233,123,0.4); color: var(--green); }
+</style>
+</head>
+<body>
+
+<div class="pwa-banner" id="pwaBanner">
+  <div class="pwa-text">
+    <span>📲</span>
+    <div><strong>ホーム画面に追加</strong> Safari下部の共有ボタン →「ホーム画面に追加」</div>
+  </div>
+  <div class="pwa-close" onclick="closePWABanner()">✕</div>
+</div>
+
+<header class="hdr">
+  <div class="hdr-logo">
+    <div class="hdr-logo-mark"><img src="icon.png" alt="WalkLoop"></div>
+    <div class="hdr-logo-text">Walk<span>Loop</span></div>
+  </div>
+  <div class="hdr-right">
+    <div class="icon-btn" onclick="openHist()">🕐</div>
+  </div>
+</header>
+
+<div id="mapWrap">
+  <canvas id="mapEl"></canvas>
+  <div class="map-ctrl">
+    <div class="mc" onclick="zoomIn()">+</div>
+    <div class="mc" onclick="zoomOut()">−</div>
+    <div class="mc" onclick="centerMap()">◎</div>
+    <div class="mc" id="pinModeBtn" onclick="togglePinMode()" title="経由地ピン追加モード" style="font-size:14px">📍</div>
+  </div>
+  <div class="map-pill" id="pill"></div>
+  <div class="map-attr">© OpenStreetMap</div>
+  <div class="map-tap-hint" id="mapTapHint">📍 タップで経由地を追加</div>
+</div>
+
+<div class="panel">
+
+  <div>
+    <div class="section-label">出発地 / 目的地</div>
+    <div class="loc-group">
+      <div class="loc-row" onclick="openLoc('start')">
+        <div class="li s">🚩</div>
+        <div class="lt">
+          <div class="ll">出発地</div>
+          <div class="ln" id="sName">タップして設定</div>
+        </div>
+        <div class="la">›</div>
+      </div>
+      <div class="loc-row" onclick="openLoc('end')">
+        <div class="li e">🏁</div>
+        <div class="lt">
+          <div class="ll">目的地（省略でループ）</div>
+          <div class="ln" id="eName">出発地と同じ</div>
+        </div>
+        <div class="la">›</div>
+      </div>
+    </div>
+    <div class="cur-btn" onclick="useGPS()">
+      <span>📍</span> 現在地を出発地として使用
+    </div>
+  </div>
+
+  <div>
+    <div class="section-label">ウォーキング距離</div>
+    <div class="dist-box">
+      <div class="chips" id="dchips">
+        <div class="chip" data-km="2">2 km</div>
+        <div class="chip" data-km="3">3 km</div>
+        <div class="chip on" data-km="5">5 km</div>
+        <div class="chip" data-km="8">8 km</div>
+        <div class="chip" data-km="10">10 km</div>
+        <div class="chip" data-km="15">15 km</div>
+      </div>
+      <div class="cust">
+        <input type="number" id="ckm" placeholder="カスタム" min="0.5" max="60" step="0.5" oninput="custKm(this)">
+        <span class="u">km</span>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="section-label">経由地（地図をタップでピン追加）</div>
+    <div class="waypin-box">
+      <div class="waypin-hint" id="waypinHint">地図をタップ または 座標入力でA〜E点を追加（最大5点）<br><span style="color:var(--text3);font-size:11px">📍ボタンでピンモードON → 地図をタップ</span></div>
+      <div class="waypin-list" id="waypinList"></div>
+      <div class="waypin-input-row" id="waypinInputRow">
+        <input type="text" id="waypinCoordInput" placeholder="例: 37.45159, 138.85904"
+          autocomplete="off"
+          onkeydown="if(event.key==='Enter')addWayPinByCoord()">
+        <button class="waypin-add-btn" onclick="addWayPinByCoord()">追加</button>
+      </div>
+      <button class="waypin-clear" id="waypinClear" onclick="clearWayPins()" style="display:none">
+        ✕ 経由地をすべてクリア
+      </button>
+    </div>
+  </div>
+
+  <div class="brow">
+    <button class="gbtn" onclick="generate()">
+      <div class="gbtn-dot"></div>
+      ルートを生成
+    </button>
+    <button class="sbtn" id="sbtn" onclick="shuffle()">🔀</button>
+  </div>
+
+  <div class="rcard" id="rcard">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
+      <div class="section-label" style="margin-bottom:0">ルート情報</div>
+      <div class="rname-wrap">
+        <span id="routeName" class="route-name">名称未設定</span>
+        <button class="rename-btn" onclick="openRenameModal(-1)">✏️</button>
+      </div>
+    </div>
+    <div class="rstats">
+      <div class="st"><span class="v" id="vd">—</span><div class="l">距離</div></div>
+      <div class="st"><span class="v" id="vt">—</span><div class="l">時間</div></div>
+      <div class="st"><span class="v" id="vs">—</span><div class="l">歩数</div></div>
+      <div class="st"><span class="v" id="vc">—</span><div class="l">kcal</div></div>
+    </div>
+  </div>
+
+  <div class="share-section" id="shareSection">
+    <div class="section-label">地図アプリで開く</div>
+    <button class="share-btn btn-google" onclick="openGoogleMaps()" style="width:100%">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+      Google Maps で開く
+    </button>
+    <div class="section-label" style="margin-top:12px">⌚ スマートウォッチにルート表示 <span style="color:var(--green);font-size:10px;font-weight:500">オススメ！</span></div>
+    <button class="share-btn btn-komoot" onclick="exportGPX()" style="width:100%;margin-bottom:8px">
+      ⬇️ GPX download
+    </button>
+    <div class="komoot-note">
+      <strong>手順</strong>
+      ① GPX download より .gpx ファイルをダウンロード<br>
+      ② Komoot アプリを起動しておく<br>
+      ③ ファイルアプリより .gpx を長押し → 共有から Komoot を選択<br>
+      ④ Komoot アプリの手順に沿って経路開始<br><br>
+      <span style="color:var(--accent)">スマートウォッチに Komoot アプリを入れている場合は、画面にルートが表示されます。</span><br>
+      <span style="color:var(--text3);font-size:10px">※ Komootアプリ（無料）が必要です</span>
+    </div>
+  </div>
+
+</div>
+
+<div class="mb" id="locMod" onclick="bgClose(event,'locMod')">
+  <div class="mo">
+    <div class="mh"></div>
+    <h2 id="modTitle">場所を設定</h2>
+    <input type="text" id="locIn" placeholder="住所・駅名・地名を入力…"
+      autocomplete="off" onkeydown="if(event.key==='Enter')setLoc()">
+    <div class="mo-hint">例: 東京都渋谷区、大阪駅、横浜中華街</div>
+    <button class="mclr" id="clrBtn" onclick="clearEnd()">目的地をクリア（ループに戻す）</button>
+    <div class="macts">
+      <button class="mcancel" onclick="closeLoc()">キャンセル</button>
+      <button class="mok" onclick="setLoc()">設定する</button>
+    </div>
+  </div>
+</div>
+
+<div class="mb" id="histMod" onclick="bgClose(event,'histMod')">
+  <div class="mo">
+    <div class="mh"></div>
+    <h2>ルート履歴</h2>
+    <div class="hlist" id="hlist"></div>
+    <div class="macts" style="margin-top:14px">
+      <button class="mcancel" onclick="closeHist()">閉じる</button>
+      <button class="mok" style="background:var(--red);box-shadow:0 4px 16px rgba(255,107,107,0.25)" onclick="clearHist()">全件削除</button>
+    </div>
+  </div>
+</div>
+
+<div class="mb" id="renameMod" onclick="bgClose(event,'renameMod')">
+  <div class="mo">
+    <div class="mh"></div>
+    <h2>ルート名を変更</h2>
+    <input type="text" id="renameInput" placeholder="ルート名を入力…"
+      autocomplete="off" onkeydown="if(event.key==='Enter')confirmRename()">
+    <div class="mo-hint">わかりやすい名前をつけておきましょう</div>
+    <div class="macts">
+      <button class="mcancel" onclick="closeRenameModal()">キャンセル</button>
+      <button class="mok" onclick="confirmRename()">変更する</button>
+    </div>
+  </div>
+</div>
+
+<div class="lol" id="lol"><div class="spin"></div><div class="ltxt" id="ltxt">計算中…</div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+
+
+const S={start:null,end:null,km:5,route:null,field:'start',zoom:14,clat:35.6812,clng:139.7671,seed:0,waypoints:[],wayPins:[],pinMode:false};
+const cv=document.getElementById('mapEl');
+const cx=cv.getContext('2d');
+let TC={};
+
+function _wld(lat,lng){const n=1<<S.zoom;return{x:(lng+180)/360*n,y:(1-Math.log(Math.tan(lat*Math.PI/180)+1/Math.cos(lat*Math.PI/180))/Math.PI)/2*n};}
+function w2c(lat,lng){const cw=_wld(S.clat,S.clng),pw=_wld(lat,lng),dpr=devicePixelRatio||1;return{x:(pw.x-cw.x)*256+cv.width/dpr/2,y:(pw.y-cw.y)*256+cv.height/dpr/2};}
+
+function draw(){
+  const dpr=devicePixelRatio||1,W=cv.width/dpr,H=cv.height/dpr;
+  cx.save();cx.scale(dpr,dpr);cx.clearRect(0,0,W,H);
+  const z=S.zoom,n=1<<z,cw=_wld(S.clat,S.clng),ts=256;
+  const x0=Math.floor(cw.x-W/(2*ts)),x1=Math.ceil(cw.x+W/(2*ts));
+  const y0=Math.floor(cw.y-H/(2*ts)),y1=Math.ceil(cw.y+H/(2*ts));
+  for(let tx=x0;tx<=x1;tx++)for(let ty=y0;ty<=y1;ty++){
+    if(ty<0||ty>=n)continue;
+    const px=(tx-cw.x)*ts+W/2,py=(ty-cw.y)*ts+H/2;
+    const ntx=((tx%n)+n)%n,k=`${z}/${ntx}/${ty}`;
+    if(TC[k]?.complete){cx.drawImage(TC[k],Math.round(px),Math.round(py),ts,ts);}
+    else{
+      cx.fillStyle='#161b22';cx.fillRect(Math.round(px),Math.round(py),ts,ts);
+      cx.strokeStyle='#30363d';cx.lineWidth=0.5;cx.strokeRect(Math.round(px)+.5,Math.round(py)+.5,ts-1,ts-1);
+      if(!TC[k]){
+        const img=new Image();
+        img.onload=()=>{TC[k]=img;draw();};
+        img.onerror=()=>{
+          if(!img._retried){
+            img._retried=true;
+            img.src=`https://tile.openstreetmap.org/${z}/${ntx}/${ty}.png`;
+          } else { TC[k]=null; }
+        };
+        TC[k]=img;
+        img.src=`https://${'abc'[Math.abs(tx+ty)%3]}.tile.openstreetmap.org/${z}/${ntx}/${ty}.png`;
+      }
+    }
+  }
+  if(S.route?.length>1){
+    const pts=S.route.map(p=>w2c(p.lat,p.lng));
+    cx.beginPath();cx.moveTo(pts[0].x,pts[0].y);pts.forEach(p=>cx.lineTo(p.x,p.y));
+    cx.strokeStyle='rgba(57,211,83,.2)';cx.lineWidth=14;cx.lineJoin='round';cx.lineCap='round';cx.setLineDash([]);cx.stroke();
+    cx.beginPath();cx.moveTo(pts[0].x,pts[0].y);pts.forEach(p=>cx.lineTo(p.x,p.y));
+    cx.strokeStyle='#39d353';cx.lineWidth=3.5;cx.stroke();
+    for(let i=30;i<pts.length-1;i+=50){
+      const dx=pts[i+1].x-pts[i].x,dy=pts[i+1].y-pts[i].y,len=Math.hypot(dx,dy);if(len<1)continue;
+      const mx=pts[i].x+dx*.5,my=pts[i].y+dy*.5,nx=dx/len,ny=dy/len;
+      cx.beginPath();cx.moveTo(mx-nx*5-ny*4,my-ny*5+nx*4);cx.lineTo(mx+nx*5,my+ny*5);cx.lineTo(mx-nx*5+ny*4,my-ny*5-nx*4);
+      cx.strokeStyle='rgba(57,211,83,.65)';cx.lineWidth=1.8;cx.stroke();
+    }
+  }
+  if(S.start){const p=w2c(S.start.lat,S.start.lng);mkr(p.x,p.y,'#39d353','🚩');}
+  if(S.end){const p=w2c(S.end.lat,S.end.lng);mkr(p.x,p.y,'#f78166','🏁');}
+  const LABELS=['A','B','C','D','E'];
+  S.wayPins.forEach((pin,i)=>{
+    const p=w2c(pin.lat,pin.lng);
+    cx.beginPath();cx.arc(p.x,p.y,16,0,Math.PI*2);
+    cx.fillStyle='rgba(240,192,64,0.2)';cx.fill();
+    cx.beginPath();cx.arc(p.x,p.y,11,0,Math.PI*2);
+    cx.fillStyle='rgba(240,192,64,0.15)';cx.fill();
+    cx.strokeStyle='#f0c040';cx.lineWidth=2;cx.stroke();
+    cx.font='bold 10px Outfit,sans-serif';
+    cx.textAlign='center';cx.textBaseline='middle';
+    cx.fillStyle='#f0c040';cx.fillText(LABELS[i],p.x,p.y);
+  });
+  cx.restore();
+}
+
+function mkr(x,y,col,em){
+  cx.beginPath();cx.arc(x,y,15,0,Math.PI*2);cx.fillStyle='rgba(0,0,0,.3)';cx.fill();
+  cx.beginPath();cx.arc(x,y,12,0,Math.PI*2);cx.fillStyle=col+'22';cx.fill();
+  cx.strokeStyle=col;cx.lineWidth=2.5;cx.stroke();
+  cx.font='14px serif';cx.textAlign='center';cx.textBaseline='middle';cx.fillText(em,x,y);
+}
+
+function resize(){
+  const wrap=document.getElementById('mapWrap'),dpr=devicePixelRatio||1;
+  cv.width=wrap.clientWidth*dpr;cv.height=wrap.clientHeight*dpr;
+  cv.style.width=wrap.clientWidth+'px';cv.style.height=wrap.clientHeight+'px';draw();
+}
+
+function fitBounds(poly){
+  const lats=poly.map(p=>p.lat),lngs=poly.map(p=>p.lng);
+  S.clat=(Math.min(...lats)+Math.max(...lats))/2;S.clng=(Math.min(...lngs)+Math.max(...lngs))/2;
+  const sp=Math.max(Math.max(...lats)-Math.min(...lats),Math.max(...lngs)-Math.min(...lngs));
+  S.zoom=sp<.008?16:sp<.02?15:sp<.05?14:sp<.12?13:sp<.25?12:11;TC={};
+}
+
+let t0=null,m0=null;
+cv.addEventListener('touchstart',e=>{if(e.touches.length===1)t0={x:e.touches[0].clientX,y:e.touches[0].clientY,lat:S.clat,lng:S.clng};},{passive:true});
+cv.addEventListener('touchmove',e=>{
+  if(!t0||e.touches.length!==1)return;
+  const mpp=156543.03392*Math.cos(S.clat*Math.PI/180)/(1<<S.zoom);
+  S.clng=t0.lng-(e.touches[0].clientX-t0.x)*mpp/111320;S.clat=t0.lat+(e.touches[0].clientY-t0.y)*mpp/111320;draw();
+},{passive:true});
+cv.addEventListener('touchend',e=>{
+  if(t0 && e.changedTouches.length===1){
+    const dx=e.changedTouches[0].clientX-t0.x;
+    const dy=e.changedTouches[0].clientY-t0.y;
+    if(Math.abs(dx)<8 && Math.abs(dy)<8 && S.pinMode){
+      const rect=cv.getBoundingClientRect();
+      const cx2=e.changedTouches[0].clientX-rect.left;
+      const cy2=e.changedTouches[0].clientY-rect.top;
+      addWayPin(cx2, cy2);
+    }
+  }
+  t0=null;
+});
+cv.addEventListener('mousedown',e=>{m0={x:e.clientX,y:e.clientY,lat:S.clat,lng:S.clng};});
+window.addEventListener('mousemove',e=>{
+  if(!m0)return;
+  const mpp=156543.03392*Math.cos(S.clat*Math.PI/180)/(1<<S.zoom);
+  S.clng=m0.lng-(e.clientX-m0.x)*mpp/111320;S.clat=m0.lat+(e.clientY-m0.y)*mpp/111320;draw();
+});
+window.addEventListener('mouseup',()=>m0=null);
+function zoomIn(){if(S.zoom<18){S.zoom++;TC={};draw();}}
+
+function canvasToLatLng(px, py){
+  const dpr=devicePixelRatio||1;
+  const W=cv.width/dpr, H=cv.height/dpr;
+  const cw=_wld(S.clat,S.clng);
+  const wx=cw.x+(px-W/2)/256;
+  const wy=cw.y+(py-H/2)/256;
+  const n=1<<S.zoom;
+  const lng=wx/n*360-180;
+  const latRad=Math.atan(Math.sinh(Math.PI*(1-2*wy/n)));
+  const lat=latRad*180/Math.PI;
+  return {lat,lng};
+}
+
+function addWayPin(px, py){
+  if(S.wayPins.length>=5){toast('経由地は最大5点までです');return;}
+  const ll=canvasToLatLng(px,py);
+  S.wayPins.push({lat:ll.lat,lng:ll.lng});
+  renderWayPinList();
+  draw();
+}
+
+function renderWayPinList(){
+  const LABELS=['A','B','C','D','E'];
+  const list=document.getElementById('waypinList');
+  const hint=document.getElementById('waypinHint');
+  const clearBtn=document.getElementById('waypinClear');
+  const inputRow=document.getElementById('waypinInputRow');
+  if(!S.wayPins.length){
+    list.innerHTML='';
+    hint.style.display='block';
+    clearBtn.style.display='none';
+  } else {
+    hint.style.display='none';
+    clearBtn.style.display='block';
+    list.innerHTML=S.wayPins.map((p,i)=>`
+      <div class="waypin-item">
+        <div class="waypin-label">${LABELS[i]}</div>
+        <div class="waypin-coord">${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}</div>
+        <button class="waypin-del" onclick="removeWayPin(${i})">✕</button>
+      </div>`).join('');
+  }
+  if(inputRow) inputRow.style.display=S.wayPins.length>=5?'none':'flex';
+}
+
+function removeWayPin(i){
+  S.wayPins.splice(i,1);
+  renderWayPinList();
+  draw();
+}
+
+function clearWayPins(){
+  S.wayPins=[];
+  renderWayPinList();
+  draw();
+}
+
+function addWayPinByCoord(){
+  if(S.wayPins.length>=5){toast('経由地は最大5点までです');return;}
+  const val=document.getElementById('waypinCoordInput').value.trim();
+  if(!val){toast('座標を入力してください');return;}
+
+  const parts=val.split(/[\s,，]+/).filter(Boolean);
+  if(parts.length<2){toast('形式: 緯度, 経度 (例: 37.451, 138.859)');return;}
+  const lat=parseFloat(parts[0]);
+  const lng=parseFloat(parts[1]);
+
+  if(isNaN(lat)||isNaN(lng)){toast('数値を入力してください');return;}
+  if(lat<-90||lat>90){toast('緯度は -90〜90 の範囲で入力してください');return;}
+  if(lng<-180||lng>180){toast('経度は -180〜180 の範囲で入力してください');return;}
+
+  S.wayPins.push({lat,lng});
+  document.getElementById('waypinCoordInput').value='';
+  renderWayPinList();
+
+  S.clat=lat; S.clng=lng;
+  if(S.zoom<14) S.zoom=14;
+  draw();
+  toast(`経由地${['A','B','C','D','E'][S.wayPins.length-1]}を追加しました`,'ok');
+}
+
+function togglePinMode(){
+  S.pinMode=!S.pinMode;
+  const hint=document.getElementById('mapTapHint');
+  hint.style.display=S.pinMode?'block':'none';
+  const btn=document.getElementById('pinModeBtn');
+  if(btn){
+    btn.style.borderColor=S.pinMode?'var(--gold)':'var(--border2)';
+    btn.style.color=S.pinMode?'var(--gold)':'var(--text2)';
+  }
+  if(S.pinMode) toast('地図をタップして経由地を追加（最大5点）');
+}
+function zoomOut(){if(S.zoom>9){S.zoom--;TC={};draw();}}
+function centerMap(){const l=S.start||S.end;if(l){S.clat=l.lat;S.clng=l.lng;draw();}}
+
+document.getElementById('dchips').addEventListener('click',e=>{
+  const c=e.target.closest('.chip');if(!c)return;
+  document.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');S.km=parseFloat(c.dataset.km);document.getElementById('ckm').value='';
+});
+function custKm(i){const v=parseFloat(i.value);if(v>0&&v<=60){document.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));S.km=v;}}
+
+function openLoc(f){
+  S.field=f;
+  document.getElementById('modTitle').textContent=f==='start'?'出発地を設定':'目的地を設定';
+  document.getElementById('locIn').value='';
+  document.getElementById('clrBtn').style.display=(f==='end'&&S.end)?'block':'none';
+  document.getElementById('locMod').classList.add('open');
+  setTimeout(()=>document.getElementById('locIn').focus(),350);
+}
+function closeLoc(){document.getElementById('locMod').classList.remove('open');}
+function clearEnd(){S.end=null;document.getElementById('eName').textContent='出発地と同じ';closeLoc();}
+function bgClose(e,id){if(e.target.id===id)document.getElementById(id).classList.remove('open');}
+
+async function setLoc(){
+  const q=document.getElementById('locIn').value.trim();if(!q)return;
+  closeLoc();showLoad('場所を検索中…');
+  try{
+    const url=`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&accept-language=ja`;
+    const res=await fetch(url,{headers:{'User-Agent':'WalkLoopApp/2.0'}});
+    const data=await res.json();
+    if(!data.length){toast('場所が見つかりませんでした');hideLoad();return;}
+    const shortName=data[0].display_name.split(',').slice(0,2).join(' ').trim();
+    const loc={name:shortName,lat:parseFloat(data[0].lat),lng:parseFloat(data[0].lon)};
+    if(S.field==='start'){S.start=loc;document.getElementById('sName').textContent=loc.name;}
+    else{S.end=loc;document.getElementById('eName').textContent=loc.name;}
+    S.clat=loc.lat;S.clng=loc.lng;TC={};draw();
+    toast(loc.name+'を設定しました','ok');
+  }catch(e){toast('エラー: '+e.message);}
+  hideLoad();
+}
+
+function useGPS(){
+  if(!navigator.geolocation){toast('位置情報が使えません');return;}
+  showLoad('現在地を取得中…');
+  navigator.geolocation.getCurrentPosition(
+    pos=>{
+      const{latitude:lat,longitude:lng}=pos.coords;
+      S.start={name:'現在地 📍',lat,lng};
+      document.getElementById('sName').textContent='現在地 📍';
+      S.clat=lat;S.clng=lng;TC={};draw();hideLoad();toast('現在地を設定しました','ok');
+    },
+    ()=>{hideLoad();toast('位置情報をONにするか、住所を手動入力してください');},
+    {timeout:12000,enableHighAccuracy:true}
+  );
+}
+
+function mkWP(origin,dest,km,seed,scale=1.0){
+  const rnd=(()=>{let s=seed*9999999|0;return()=>{s=(s*1664525+1013904223)&0x7fffffff;return s/0x7fffffff};})();
+  const base=km/(2*Math.PI*6371)*360*0.30*scale;
+  const latD=base, lngD=base/Math.cos(origin.lat*Math.PI/180);
+  const isLoop=!dest;
+  const off=[0,1,2,3].map(i=>{const a=(i/4)*2*Math.PI+Math.PI/4+(rnd()-.5)*.4,r=.4+(rnd()-.5)*.08;return{dl:Math.sin(a)*latD*r,dg:Math.cos(a)*lngD*r};});
+  const mid=off.map(o=>({lat:origin.lat+o.dl,lng:origin.lng+o.dg}));
+  let baseWP = isLoop?[origin,...mid,origin]:[origin,...mid,dest];
+  if(S.wayPins && S.wayPins.length>0){
+    baseWP = [origin, ...S.wayPins, ...mid, ...(isLoop?[origin]:[dest])];
+  }
+  return baseWP;
+}
+
+function haversineTotal(poly){
+  let d=0;
+  for(let i=0;i<poly.length-1;i++){
+    const R=6371000,φ1=poly[i].lat*Math.PI/180,φ2=poly[i+1].lat*Math.PI/180;
+    const Δφ=(poly[i+1].lat-poly[i].lat)*Math.PI/180,Δλ=(poly[i+1].lng-poly[i].lng)*Math.PI/180;
+    const a=Math.sin(Δφ/2)**2+Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
+    d+=R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+  }
+  return d;
+}
+
+// router.project-osrm.org のデモサーバーは car プロファイルのみ対応で foot は使えないため、
+// 歩行者ルーティングに対応した公開 OSRM サーバーを優先して使用する。
+const OSRM_FOOT_ENDPOINTS=[
+  'https://routing.openstreetmap.de/routed-foot/route/v1/foot',
+  'https://router.project-osrm.org/route/v1/foot' // 予備（対応していれば使われる）
+];
+
+async function fetchOSRM(wp){
+  const coords=wp.map(p=>`${p.lng.toFixed(6)},${p.lat.toFixed(6)}`).join(';');
+  for(const base of OSRM_FOOT_ENDPOINTS){
+    try{
+      const ctrl=new AbortController();
+      const timer=setTimeout(()=>ctrl.abort(),8000);
+      const r=await fetch(`${base}/${coords}?overview=full&geometries=geojson`,{signal:ctrl.signal});
+      clearTimeout(timer);
+      if(!r.ok) continue;
+      const d=await r.json();
+      if(!d.routes?.length) continue;
+      return {poly:d.routes[0].geometry.coordinates.map(c=>({lat:c[1],lng:c[0]})),distM:d.routes[0].distance,durS:d.routes[0].duration};
+    }catch{ /* 次のエンドポイントを試す */ }
+  }
+  return null; // 全滅した場合のみ直線補間にフォールバック
+}
+
+async function doGen(isShuffle=false){
+  if(!S.start){toast('出発地を設定してください');return;}
+  showLoad(isShuffle?'別のルートを探しています…':'ルートを計算中…');
+  S.seed=Math.random();
+  try{
+    const targetM=S.km*1000;
+    const tolerance=0.20;
+    let poly=null,distM=0,durS=0,wp;
+    let scale=1.0;
+
+    let osrmOk=false;
+    for(let attempt=0;attempt<3;attempt++){
+      wp=mkWP(S.start,S.end,S.km,S.seed,scale);
+      const res=await fetchOSRM(wp);
+      if(!res) break;
+      osrmOk=true;
+      poly=res.poly; distM=res.distM; durS=res.durS;
+      const ratio=targetM/distM;
+      if(Math.abs(ratio-1)<=tolerance) break;
+      scale*=ratio;
+    }
+
+    if(!osrmOk){
+      toast('道路ルート取得に失敗したため、概算ルートで作成しました');
+      for(let attempt=0;attempt<3;attempt++){
+        wp=mkWP(S.start,S.end,S.km,S.seed,scale);
+        const pts=[];
+        for(let i=0;i<wp.length-1;i++){const a=wp[i],b=wp[i+1];for(let j=0;j<=30;j++)pts.push({lat:a.lat+(b.lat-a.lat)*j/30,lng:a.lng+(b.lng-a.lng)*j/30});}
+        const d=haversineTotal(pts);
+        const ratio=targetM/d;
+        if(Math.abs(ratio-1)<=tolerance){poly=pts;distM=d;break;}
+        scale*=ratio;
+        poly=pts; distM=d;
+      }
+      durS=distM/1.2;
+    }
+
+    S.waypoints=wp;
+    S.route=poly;fitBounds(poly);draw();
+    const km=(distM/1000).toFixed(2);
+    const min=Math.round(distM/83.33);
+    const timeStr=min>=60?`${Math.floor(min/60)}時間${min%60}分`:min+'分';
+    document.getElementById('vd').textContent=km+'km';
+    document.getElementById('vt').textContent=timeStr;
+    document.getElementById('vs').textContent=((distM/0.78)/1000).toFixed(1)+'k';
+    document.getElementById('vc').textContent=Math.round(distM*0.06);
+    document.getElementById('rcard').style.display='block';
+    document.getElementById('shareSection').style.display='flex';
+    document.getElementById('sbtn').classList.add('live');
+    const pill=document.getElementById('pill');pill.textContent=`📍 ${km} km · ${timeStr}`;pill.style.display='block';
+    document.getElementById('routeName').textContent='名称未設定';
+    toast(isShuffle?'別のルートに更新しました！':'ルートを生成しました！','ok');
+  }catch(e){
+    if(!S.route) toast('ルート生成に失敗しました。再試行してください。');
+    console.error(e);
+  }
+  if(S.route && S.start){
+    saveHist({
+      km:(S.route?((()=>{let d=0;for(let i=0;i<S.route.length-1;i++){const R=6371000,p1=S.route[i],p2=S.route[i+1];const df=(p2.lat-p1.lat)*Math.PI/180,dl=(p2.lng-p1.lng)*Math.PI/180,a=Math.sin(df/2)**2+Math.cos(p1.lat*Math.PI/180)*Math.cos(p2.lat*Math.PI/180)*Math.sin(dl/2)**2;d+=R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}return (d/1000).toFixed(2);})()):'0'),
+      min:Math.round(haversineTotal(S.route)/83.33),
+      startName:S.start.name,
+      poly:S.route,
+      wp:S.waypoints
+    });
+  }
+  hideLoad();
+}
+function generate(){doGen(false);}
+function shuffle(){doGen(true);}
+
+function pickWP(arr, max){
+  if(arr.length<=max) return arr;
+  const out=[arr[0]];
+  const step=(arr.length-2)/(max-2);
+  for(let i=1;i<max-1;i++) out.push(arr[Math.round(i*step)]);
+  out.push(arr[arr.length-1]);
+  return out;
+}
+
+function openGoogleMaps(){
+  if(!S.start||!S.route) return;
+  const wp=pickWP(S.waypoints,9);
+  const origin=`${S.start.lat.toFixed(6)},${S.start.lng.toFixed(6)}`;
+  const dest=wp[wp.length-1];
+  const destStr=`${dest.lat.toFixed(6)},${dest.lng.toFixed(6)}`;
+  const vias=wp.slice(1,-1).map(p=>`${p.lat.toFixed(6)},${p.lng.toFixed(6)}`).join('|');
+  let url=`comgooglemaps://?saddr=${origin}&daddr=${destStr}&waypoints=${encodeURIComponent(vias)}&directionsmode=walking`;
+  const webUrl=`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destStr}&travelmode=walking${vias?'&waypoints='+encodeURIComponent(vias):''}`;
+  const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent);
+  if(isIOS){
+    window.location.href=url;
+    setTimeout(()=>{ window.open(webUrl,'_blank'); },500);
+  } else {
+    window.open(webUrl,'_blank');
+  }
+  toast('Google Mapsを開いています…');
+}
+
+async function exportGPX(){
+  if(!S.route||!S.route.length){toast('先にルートを生成してください');return;}
+
+  const routeLabel = document.getElementById('routeName')?.textContent;
+  const name = (routeLabel && routeLabel !== '名称未設定') ? routeLabel : (S.start?.name||'WalkLoop');
+  const now  = new Date().toISOString();
+
+  const pts  = S.route;
+  const step = pts.length > 500 ? Math.ceil(pts.length/500) : 1;
+  const sampled = pts.filter((_,i)=> i%step===0 || i===pts.length-1);
+
+  const trkpts = sampled.map(p =>
+    `      <trkpt lat="${p.lat.toFixed(7)}" lon="${p.lng.toFixed(7)}"></trkpt>`
+  ).join('\n');
+
+  const gpx = `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="WalkLoop" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <name>${name}</name>
+    <time>${now}</time>
+  </metadata>
+  <trk>
+    <name>${name}</name>
+    <trkseg>
+${trkpts}
+    </trkseg>
+  </trk>
+</gpx>`;
+
+  const blob = new Blob([gpx], {type:'text/xml'});
+  const file = new File([blob], name + '.gpx', {type:'text/xml'});
+
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try{
+      await navigator.share({ files:[file] });
+      return;
+    }catch(e){
+      if(e.name==='AbortError') return;
+    }
+  }
+
+  const url = URL.createObjectURL(new Blob([gpx], {type:'application/gpx+xml'}));
+  const a   = document.createElement('a');
+  a.href    = url;
+  a.download= name + '.gpx';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('GPXファイルを保存しました！','ok');
+}
+
+const HK='wl_hist_v5';
+function loadHist(){try{return JSON.parse(localStorage.getItem(HK))||[];}catch{return[];}}
+function saveHist(e){const h=loadHist();h.unshift({...e,name:e.name||'',date:new Date().toLocaleDateString('ja-JP')});if(h.length>20)h.pop();try{localStorage.setItem(HK,JSON.stringify(h));}catch{}}
+function clearHist(){try{localStorage.removeItem(HK);}catch{}closeHist();toast('履歴を全件削除しました');}
+function deleteHist(i){
+  const h=loadHist();
+  h.splice(i,1);
+  try{localStorage.setItem(HK,JSON.stringify(h));}catch{}
+  openHist();
+  toast('削除しました');
+}
+function openHist(){
+  const h=loadHist(),el=document.getElementById('hlist');
+  el.innerHTML=h.length?h.map((x,i)=>`
+    <div class="hi">
+      <div style="font-size:20px;cursor:pointer" onclick="loadHR(${i})">🗺️</div>
+      <div class="hi-info" style="cursor:pointer" onclick="loadHR(${i})">
+        <div class="hi-name">${x.name||x.startName||'名称未設定'}</div>
+        <div class="hi-meta">${x.date} · ${x.km}km · ${x.min}分</div>
+      </div>
+      <div class="hi-actions">
+        <button class="hi-act-btn hi-ren" onclick="openRenameModal(${i})" title="名前を変更">✏️</button>
+        <button class="hi-act-btn hi-del" onclick="deleteHist(${i})" title="削除">🗑️</button>
+      </div>
+    </div>`).join(''):'<div class="hempty">まだ履歴がありません</div>';
+  document.getElementById('histMod').classList.add('open');
+}
+function closeHist(){document.getElementById('histMod').classList.remove('open');}
+function loadHR(i){
+  const h=loadHist()[i];if(!h?.poly)return;
+  S.route=h.poly;if(h.wp)S.waypoints=h.wp;fitBounds(h.poly);draw();
+  document.getElementById('vd').textContent=h.km+'km';
+  document.getElementById('vt').textContent=h.min+'分';
+  document.getElementById('vs').textContent=((parseFloat(h.km)*1000/0.78)/1000).toFixed(1)+'k';
+  document.getElementById('vc').textContent=Math.round(parseFloat(h.km)*60);
+  document.getElementById('rcard').style.display='block';
+  document.getElementById('shareSection').style.display='flex';
+  document.getElementById('sbtn').classList.add('live');
+  const pill=document.getElementById('pill');
+  const tStr=h.min>=60?`${Math.floor(h.min/60)}時間${h.min%60}分`:h.min+'分';
+  pill.textContent=`📍 ${h.km} km · ${tStr}`;pill.style.display='block';
+  document.getElementById('routeName').textContent = h.name || h.startName || '名称未設定';
+  closeHist();toast('過去のルートを表示しました');
+}
+
+let _renameIdx = -1;
+function openRenameModal(idx){
+  _renameIdx = idx;
+  const h = loadHist();
+  let current = '';
+  if(idx === -1){
+    current = document.getElementById('routeName').textContent;
+    if(current === '名称未設定') current = '';
+  } else {
+    current = h[idx]?.name || h[idx]?.startName || '';
+  }
+  document.getElementById('renameInput').value = current;
+  document.getElementById('renameMod').classList.add('open');
+  setTimeout(()=>document.getElementById('renameInput').focus(), 350);
+}
+function closeRenameModal(){ document.getElementById('renameMod').classList.remove('open'); }
+function confirmRename(){
+  const name = document.getElementById('renameInput').value.trim();
+  if(!name){ closeRenameModal(); return; }
+  if(_renameIdx === -1){
+    document.getElementById('routeName').textContent = name;
+    const h = loadHist();
+    if(h.length > 0){ h[0].name = name; try{localStorage.setItem(HK,JSON.stringify(h));}catch{} }
+  } else {
+    const h = loadHist();
+    if(h[_renameIdx]) h[_renameIdx].name = name;
+    try{localStorage.setItem(HK,JSON.stringify(h));}catch{}
+    openHist();
+  }
+  closeRenameModal();
+  toast('名前を変更しました','ok');
+}
+
+function showLoad(m){document.getElementById('ltxt').textContent=m||'計算中…';document.getElementById('lol').classList.add('on');}
+function hideLoad(){document.getElementById('lol').classList.remove('on');}
+let tt;
+function toast(m,t=''){clearTimeout(tt);const el=document.getElementById('toast');el.textContent=m;el.className='toast'+(t?' '+t:'');el.classList.add('show');tt=setTimeout(()=>el.classList.remove('show'),3200);}
+
+window.addEventListener('load',()=>{
+  resize();
+  navigator.geolocation?.getCurrentPosition(p=>{S.clat=p.coords.latitude;S.clng=p.coords.longitude;TC={};draw();},()=>{});
+
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  }
+
+  const isStandalone = window.navigator.standalone === true
+    || window.matchMedia('(display-mode: standalone)').matches;
+  const bannerDismissed = localStorage.getItem('pwa_banner_dismissed');
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  if(isIOS && !isStandalone && !bannerDismissed){
+    document.getElementById('pwaBanner').classList.add('show');
+  }
+});
+window.addEventListener('resize',()=>{TC={};resize();});
+
+function closePWABanner(){
+  document.getElementById('pwaBanner').classList.remove('show');
+  localStorage.setItem('pwa_banner_dismissed','1');
+}
+
+
+</script>
+</body>
+</html>
